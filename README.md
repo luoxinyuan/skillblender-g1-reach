@@ -12,19 +12,22 @@ This is the official code release of paper SkillBlender: Towards Versatile Human
 
 ## Installation
 
-Please refer to [1.INSTALLATION.md](./docs/1.INSTALLATION.md).
+Our code is easy to install and run. Please refer to [1.INSTALLATION.md](./docs/1.INSTALLATION.md) for detailed instructions.
 
 ## Training, playing, and evaluation
 
-Please refer to [2.RUNNING.md](./docs/2.RUNNING.md).
+Please refer to [2.RUNNING.md](./docs/2.RUNNING.md) for how to train, play, and evaluate the skills and tasks of SkillBlender in our SkillBench.
+We also include some troubleshooting tips in this document.
 
 ## Changing observations
 
-Please refer to [3.OBSERVATION.md](./docs/3.OBSERVATION.md).
+We support both state-based and vision-based observations. The default observation is state-based, which includes joint positions, velocities, etc. You can also use ego-centric vision observations for high-level tasks.
+Please refer to [3.OBSERVATION.md](./docs/3.OBSERVATION.md) for more details on how to change the observation types and structures.
 
 ## Changing humanoid
 
-Please refer to [4.HUMANOID.md](./docs/4.HUMANOID.md).
+We support three distinct humanoid robots: H1, G1, and H1-2. Each robot has its own set of skills and tasks. However, you can also easily change the humanoid robot in the codebase to your own robot by modifying the config files and the robot class.
+For more details, please refer to [4.HUMANOID.md](./docs/4.HUMANOID.md).
 
 ## Release status
 
