@@ -39,8 +39,7 @@ import torch
 import wandb
 
 def train(args):
-    # wandb.init(project=args.wandb, name=args.run_name, entity=args.entity)
-    wandb.init(project=args.wandb, name=args.run_name, entity="yuxuank")
+    wandb.init(project=args.wandb, name=args.run_name, entity=args.entity)
     
     # # NOTE: wandb save files, need to change after using other envs
     # wandb.save(LEGGED_GYM_ENVS_DIR + "/h1/h1_config.py", policy="now")
