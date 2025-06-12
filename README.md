@@ -2,9 +2,9 @@
   <b>SkillBlender: Towards Versatile Humanoid Whole-Body Loco-Manipulation via Skill Blending</b>
 </h1>
 
-This is the official code release of paper SkillBlender: Towards Versatile Humanoid Whole-Body Loco-Manipulation via Skill Blending. This repository contains code and ckpts of our framework **SkillBlender** and benchmark **SkillBench**.
+This is the official code release of our paper [SkillBlender: Towards Versatile Humanoid Whole-Body Loco-Manipulation via Skill Blending](https://arxiv.org/abs/2506.09366). This repository contains code and ckpts of our framework **SkillBlender** and benchmark **SkillBench**.
 
-**[[paper (coming soon)]]() [[project page]](https://usc-gvl.github.io/SkillBlender-web/)**
+**[[paper]](https://arxiv.org/abs/2506.09366) [[project page]](https://usc-gvl.github.io/SkillBlender-web/) [[checkpoints]](https://drive.google.com/drive/folders/104W9oBdHxkOKFUZNV60jQo4sugaM0rit?usp=drive_link)**
 
 <div align=center>
     <img src="docs/img/teaser.jpg" width=100%>
@@ -31,13 +31,13 @@ For more details, please refer to [4.HUMANOID.md](./docs/4.HUMANOID.md).
 
 ## Release status
 
-- [x] Release code for **SkillBlender** and **SkillBench**.
-- [x] Release ckpts for H1 skills and tasks.
-- [ ] Release ckpts for G1 and H1-2 skills and tasks.
+- [x] Release full code of our framework **SkillBlender** and benchmark **SkillBench**, including simulation environments, rewards, training & playing scripts, etc.
+- [x] Release pretrained ckpts for H1 primitive skills and loco-manipulation tasks.
+- [ ] Release pretrained ckpts for G1 and H1-2 primitive skills and loco-manipulation tasks.
 - [ ] Release sim2sim and sim2real code for primitive skill deployment.
-- [ ] More to come... (Feel free to open issues and PRs!)
+- More to come... (Feel free to open issues and PRs!)
 
-**Please stay tuned for any updates of the dataset and code!**
+**Please stay tuned for any updates of this repository!**
 
 ## Acknowledgement
 
