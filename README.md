@@ -48,5 +48,10 @@ This project is based on [legged_gym](https://github.com/leggedrobotics/legged_g
 If you find this work helpful, please consider citing:
 
 ```
-BibTeX
+@article{kuang2025skillblender,
+  title={SkillBlender: Towards Versatile Humanoid Whole-Body Loco-Manipulation via Skill Blending},
+  author={Kuang, Yuxuan and Geng, Haoran and Elhafsi, Amine and Do, Tan-Dzung and Abbeel, Pieter and Malik, Jitendra and Pavone, Marco and Wang, Yue},
+  journal={arXiv preprint arXiv:2506.09366},
+  year={2025}
+}
 ```
