@@ -4,7 +4,7 @@
 
 This is the official code release of our paper [SkillBlender: Towards Versatile Humanoid Whole-Body Loco-Manipulation via Skill Blending](https://arxiv.org/abs/2506.09366). This repository contains code and ckpts of our framework **SkillBlender** and benchmark **SkillBench**.
 
-**[[paper]](https://arxiv.org/abs/2506.09366) [[project page]](https://usc-gvl.github.io/SkillBlender-web/) [[checkpoints (Google Drive)]](https://drive.google.com/drive/folders/104W9oBdHxkOKFUZNV60jQo4sugaM0rit?usp=drive_link) [[checkpoints (Hugging Face)]](https://huggingface.co/yxK/SkillBlender_ckpt_release)**
+**[`[Paper]`](https://arxiv.org/abs/2506.09366) [`[Project Page]`](https://usc-gvl.github.io/SkillBlender-web/) [`[Checkpoints (Google Drive)]`](https://drive.google.com/drive/folders/104W9oBdHxkOKFUZNV60jQo4sugaM0rit?usp=drive_link) [`[Checkpoints (Hugging Face)]`](https://huggingface.co/yxK/SkillBlender_ckpt_release)**
 
 <div align=center>
     <img src="docs/img/teaser.jpg" width=100%>
