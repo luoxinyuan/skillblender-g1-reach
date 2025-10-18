@@ -92,21 +92,43 @@ class LeggedRobot(BaseTask):
         Returns:
             [torch.Tensor]: Vector of scales used to multiply a uniform distribution in [-1, 1]
         """
-        noise_vec = torch.zeros(
-            self.cfg.env.num_single_obs, device=self.device)
+        # If some tasks append extra observation dims at the end (for example
+        # force observations in certain environments), account for that tail
+        # so the noise indexing matches the actual layout used by the base
+        # observation builder. The noise vector length should correspond to
+        # the number of single obs entries before any tail is appended.
+        tail_extra = 0
+        if hasattr(self.cfg.env, 'force_obs_dim'):
+            tail_extra = int(self.cfg.env.force_obs_dim)
+        end = int(self.cfg.env.num_single_obs) - tail_extra
+
+        noise_vec = torch.zeros(end, device=self.device)
         self.add_noise = self.cfg.noise.add_noise
         noise_scales = self.cfg.noise.noise_scales
         noise_level = self.cfg.noise.noise_level
         num_dof = self.cfg.env.num_actions
-        
-        noise_vec[-3:] = noise_scales.quat * noise_level * self.obs_scales.quat # base euler xyz
-        noise_vec[-6:-3] = noise_scales.ang_vel * noise_level * self.obs_scales.ang_vel # base ang vel (omega)
-        noise_vec[-6-num_dof:-6] = 0. # previous actions
-        noise_vec[-6-2*num_dof:-6-num_dof] = noise_scales.dof_vel * noise_level * self.obs_scales.dof_vel # dof vel (dq)
-        noise_vec[-6-3*num_dof:-6-2*self.num_dof] = noise_scales.dof_pos * noise_level * self.obs_scales.dof_pos # dof pos (q)
-        noise_vec[:-6-3*num_dof] = 0. # command
-        
-        assert -6-3*num_dof + self.cfg.env.num_single_obs == self.cfg.env.command_dim
+        # If some tasks append extra observation dims at the end (for example
+        # force observations in certain environments), account for that tail
+        # so the noise indexing matches the actual layout.
+        tail_extra = 0
+        if hasattr(self.cfg.env, 'force_obs_dim'):
+            tail_extra = int(self.cfg.env.force_obs_dim)
+
+        # base euler xyz (3)
+        noise_vec[end-3:end] = noise_scales.quat * noise_level * self.obs_scales.quat
+        # base angular velocity (3)
+        noise_vec[end-6:end-3] = noise_scales.ang_vel * noise_level * self.obs_scales.ang_vel
+        # previous actions
+        noise_vec[end-6-num_dof:end-6] = 0.
+        # dof velocities
+        noise_vec[end-6-2*num_dof:end-6-num_dof] = noise_scales.dof_vel * noise_level * self.obs_scales.dof_vel
+        # dof positions
+        noise_vec[end-6-3*num_dof:end-6-2*num_dof] = noise_scales.dof_pos * noise_level * self.obs_scales.dof_pos
+        # commands (everything before the dof blocks)
+        noise_vec[:end-6-3*num_dof] = 0.
+
+        # Ensure that the command dimension matches the layout excluding the tail
+        assert end - 6 - 3*num_dof == self.cfg.env.command_dim
         return noise_vec
 
     def step(self, actions):

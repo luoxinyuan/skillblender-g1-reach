@@ -77,6 +77,9 @@ from .g1.g1_walking.g1_walking_config import G1WalkingCfg, G1WalkingCfgPPO
 ### G1 Reaching
 from .g1.g1_reaching.g1_reaching import G1Reaching
 from .g1.g1_reaching.g1_reaching_config import G1ReachingCfg, G1ReachingCfgPPO
+### G1 Reaching Force
+from .g1.g1_reaching_force.g1_reaching_force import G1ReachingForce
+from .g1.g1_reaching_force.g1_reaching_force_config import G1ReachingForceCfg, G1ReachingForceCfgPPO
 ### G1 Stepping
 from .g1.g1_stepping.g1_stepping import G1Stepping
 from .g1.g1_stepping.g1_stepping_config import G1SteppingCfg, G1SteppingCfgPPO
@@ -164,6 +167,7 @@ task_registry.register( "h1_task_transfer", H1TaskTransfer, H1TaskTransferCfg(),
 task_registry.register( "h1_task_cabinet", H1TaskCabinet, H1TaskCabinetCfg(), H1TaskCabinetCfgPPO(), 'h1/h1_task_cabinet')
 task_registry.register( "g1_walking", G1Walking, G1WalkingCfg(), G1WalkingCfgPPO(), 'g1/g1_walking')
 task_registry.register( "g1_reaching", G1Reaching, G1ReachingCfg(), G1ReachingCfgPPO(), 'g1/g1_reaching')
+task_registry.register( "g1_reaching_force", G1ReachingForce, G1ReachingForceCfg(), G1ReachingForceCfgPPO(), 'g1/g1_reaching_force')
 task_registry.register( "g1_stepping", G1Stepping, G1SteppingCfg(), G1SteppingCfgPPO(), 'g1/g1_stepping')
 task_registry.register( "g1_squatting", G1Squatting, G1SquattingCfg(), G1SquattingCfgPPO(), 'g1/g1_squatting')
 task_registry.register( "g1_task_box", G1TaskBox, G1TaskBoxCfg(), G1TaskBoxCfgPPO(), 'g1/g1_task_box')
