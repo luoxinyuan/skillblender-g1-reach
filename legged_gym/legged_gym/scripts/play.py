@@ -54,6 +54,8 @@ REACHING = [f"{robot}_reaching" for robot in ROBOT_LIST]
 STEPPING = [f"{robot}_stepping" for robot in ROBOT_LIST]
 SQUATTING = [f"{robot}_squatting" for robot in ROBOT_LIST]
 TASK_REACH = [f"{robot}_task_reach" for robot in ROBOT_LIST]
+# List force variants that share visualization with their base tasks
+REACHING_FORCE = ['g1_reaching_force']
 TASK_BOX = [f"{robot}_task_box" for robot in ROBOT_LIST]
 TASK_BUTTON = [f"{robot}_task_button" for robot in ROBOT_LIST]
 TASK_LIFT = [f"{robot}_task_lift" for robot in ROBOT_LIST]
@@ -73,7 +75,7 @@ def visualize_task(task, env):
         root_end = root_states + 1e3 * commands[:, :3]
         for i in range(env.num_envs):
             gymutil.draw_line(gymapi.Vec3(root_states[i, 0], root_states[i, 1], root_states[i, 2]), gymapi.Vec3(root_end[i, 0], root_end[i, 1], root_end[i, 2]), gymapi.Vec3(1, 0, 0), env.gym, env.viewer, env.envs[i])
-    elif task in REACHING+TASK_REACH:
+    elif task in REACHING+TASK_REACH+REACHING_FORCE:
         env.gym.clear_lines(env.viewer)
         # Create helper geometry used for visualization
         # Create an wireframe axis
