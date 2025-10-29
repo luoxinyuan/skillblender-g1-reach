@@ -32,7 +32,7 @@ from legged_gym.envs.g1.g1_reaching.g1_reaching import G1Reaching
 from .g1_reaching_force_config import G1ReachingForceCfg
 
 from isaacgym.torch_utils import *
-from isaacgym import gymtorch, gymapi
+from isaacgym import gymtorch, gymapi, gymutil
 
 import torch
 
@@ -212,16 +212,55 @@ class G1ReachingForce(G1Reaching):
         self._calculate_ee_forces()
         self._update_force_application_pos()
         
-        # Apply forces to simulation
-        self.gym.apply_rigid_body_force_tensors(
+        # Apply forces to simulation at positions on the rigid bodies
+        # Use apply_rigid_body_force_at_pos_tensors to apply force vectors at specific points
+        self.gym.apply_rigid_body_force_at_pos_tensors(
             self.sim,
             gymtorch.unwrap_tensor(self.apply_force_tensor),
             gymtorch.unwrap_tensor(self.apply_force_pos_tensor),
             gymapi.ENV_SPACE
         )
+        print(f'Applied left hand force: {self.left_ee_apply_force[0].cpu().numpy()} at position {self.apply_force_pos_tensor[0, self.wrist_indices[0]].cpu().numpy()}')
+        print(f'Applied right hand force: {self.right_ee_apply_force[0].cpu().numpy()} at position {self.apply_force_pos_tensor[0, self.wrist_indices[1]].cpu().numpy()}')
+        print('---')
         
         # Call parent post_physics_step
         super().post_physics_step()
+
+    def _draw_debug_vis(self):
+        """Draw force vectors for left and right hands in the viewer."""
+        # follow parent behavior: only draw when viewer is available and debug enabled
+        if not (hasattr(self, 'viewer') and self.viewer and self.enable_viewer_sync and self.debug_viz):
+            return
+
+        # ensure rigid state is refreshed
+        self.gym.refresh_rigid_body_state_tensor(self.sim)
+
+        for i in range(self.num_envs):
+            try:
+                left_idx = int(self.wrist_indices[0])
+                right_idx = int(self.wrist_indices[1])
+            except Exception:
+                # fallback if wrist_indices not set as expected
+                continue
+
+            # get force and position (numpy)
+            pos_l = self.apply_force_pos_tensor[i, left_idx].cpu().numpy()
+            pos_r = self.apply_force_pos_tensor[i, right_idx].cpu().numpy()
+            force_l = self.apply_force_tensor[i, left_idx].cpu().numpy()
+            force_r = self.apply_force_tensor[i, right_idx].cpu().numpy()
+
+            # draw a line from pos to pos + scaled force
+            scale = 0.02
+            start_l = gymapi.Vec3(float(pos_l[0]), float(pos_l[1]), float(pos_l[2]))
+            end_l = gymapi.Vec3(float(pos_l[0] + force_l[0] * scale), float(pos_l[1] + force_l[1] * scale), float(pos_l[2] + force_l[2] * scale))
+            start_r = gymapi.Vec3(float(pos_r[0]), float(pos_r[1]), float(pos_r[2]))
+            end_r = gymapi.Vec3(float(pos_r[0] + force_r[0] * scale), float(pos_r[1] + force_r[1] * scale), float(pos_r[2] + force_r[2] * scale))
+
+            color = gymapi.Vec3(0.851, 0.144, 0.07)
+            # draw lines
+            gymutil.draw_line(start_l, end_l, color, self.gym, self.viewer, self.envs[i])
+            gymutil.draw_line(start_r, end_r, color, self.gym, self.viewer, self.envs[i])
         
     def _resample_force_settings(self, env_ids):
         """Resample force parameters for reset environments"""

@@ -40,7 +40,7 @@ class G1ReachingCfg(LeggedRobotCfg):
         num_actions = 21
         frame_stack = 1
         c_frame_stack = 3
-        command_dim = 14
+        command_dim = 14 # 这个为什么是14？
         num_single_obs = 3 * num_actions + 6 + command_dim # see `obs_buf = torch.cat(...)` for details
         num_observations = int(frame_stack * num_single_obs)
         single_num_privileged_obs = 3 * num_actions + 60
@@ -51,7 +51,8 @@ class G1ReachingCfg(LeggedRobotCfg):
         use_ref_actions = False
 
     class asset(LeggedRobotCfg.asset):
-        file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/g1/g1_29dof_lock_waist_rev_1_0_modified.urdf'
+        # file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/g1/g1_29dof.urdf'
+        file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/g1/g1_29dof_lock_waist_rev_1_0_modified_situp.urdf'
 
         name = "g1"
         foot_name = "ankle_roll"
@@ -106,15 +107,26 @@ class G1ReachingCfg(LeggedRobotCfg):
              
             'waist_yaw_joint' : 0., # index=12
             
+            # 'waist_roll_joint' : 0.,
+            # 'waist_pitch_joint' : 0.,
+            
             "left_shoulder_pitch_joint": 0.,
             "left_shoulder_roll_joint": 0.,
             "left_shoulder_yaw_joint": 0.,
             "left_elbow_joint": 0.,
+
+            # "left_wrist_roll_joint": 0.,
+            # "left_wrist_pitch_joint": 0.,
+            # "left_wrist_yaw_joint": 0.,
             
             "right_shoulder_pitch_joint": 0.,
             "right_shoulder_roll_joint": 0.,
             "right_shoulder_yaw_joint": 0.,
             "right_elbow_joint": 0.,
+
+            # "right_wrist_roll_joint": 0.,
+            # "right_wrist_pitch_joint": 0.,
+            # "right_wrist_yaw_joint": 0.,
         }
 
     class control(LeggedRobotCfg.control):

@@ -183,7 +183,7 @@ class G1ReachingForceCfg(LeggedRobotCfg):
         apply_force_z_range = [-30.0, 30.0]
         
         # Force duration (in simulation steps)
-        randomize_force_duration = [50, 200]  # min and max steps
+        randomize_force_duration = [20, 60]  # min and max steps
         
         # Force application position on hand link
         apply_force_pos_ratio_range = [0.0, 1.0]  # 0 = hand center, 1 = fingertip
