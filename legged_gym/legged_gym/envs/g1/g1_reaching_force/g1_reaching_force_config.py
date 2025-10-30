@@ -52,7 +52,7 @@ class G1ReachingForceCfg(LeggedRobotCfg):
         use_ref_actions = False
 
     class asset(LeggedRobotCfg.asset):
-        file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/g1/g1_29dof_lock_waist_rev_1_0_modified.urdf'
+        file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/g1/g1_29dof_lock_waist_rev_1_0_modified_situp.urdf'
 
         name = "g1"
         foot_name = "ankle_roll"
@@ -178,9 +178,9 @@ class G1ReachingForceCfg(LeggedRobotCfg):
     # External force configuration
     class force:
         # Force ranges for X, Y, Z axes (in Newtons, in world frame)
-        apply_force_x_range = [-30.0, 30.0]
-        apply_force_y_range = [-30.0, 30.0]
-        apply_force_z_range = [-30.0, 30.0]
+        apply_force_x_range = [-10.0, 10.0]
+        apply_force_y_range = [-10.0, 10.0]
+        apply_force_z_range = [-10.0, 10.0]
         
         # Force duration (in simulation steps)
         randomize_force_duration = [20, 60]  # min and max steps

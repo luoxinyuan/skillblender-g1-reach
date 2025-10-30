@@ -220,9 +220,12 @@ class G1ReachingForce(G1Reaching):
             gymtorch.unwrap_tensor(self.apply_force_pos_tensor),
             gymapi.ENV_SPACE
         )
-        print(f'Applied left hand force: {self.left_ee_apply_force[0].cpu().numpy()} at position {self.apply_force_pos_tensor[0, self.wrist_indices[0]].cpu().numpy()}')
-        print(f'Applied right hand force: {self.right_ee_apply_force[0].cpu().numpy()} at position {self.apply_force_pos_tensor[0, self.wrist_indices[1]].cpu().numpy()}')
-        print('---')
+        # print(f'Applied left hand force: {self.left_ee_apply_force[0].cpu().numpy()} at position {self.apply_force_pos_tensor[0, self.wrist_indices[0]].cpu().numpy()}')
+        # print(f'Applied right hand force: {self.right_ee_apply_force[0].cpu().numpy()} at position {self.apply_force_pos_tensor[0, self.wrist_indices[1]].cpu().numpy()}')
+        # print('---')
+
+        if self.viewer and self.enable_viewer_sync and self.debug_viz:
+            self._draw_debug_vis()
         
         # Call parent post_physics_step
         super().post_physics_step()
@@ -261,7 +264,7 @@ class G1ReachingForce(G1Reaching):
             # draw lines
             gymutil.draw_line(start_l, end_l, color, self.gym, self.viewer, self.envs[i])
             gymutil.draw_line(start_r, end_r, color, self.gym, self.viewer, self.envs[i])
-        
+
     def _resample_force_settings(self, env_ids):
         """Resample force parameters for reset environments"""
         if len(env_ids) == 0:
