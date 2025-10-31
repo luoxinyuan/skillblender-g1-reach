@@ -106,6 +106,43 @@ def visualize_task(task, env):
                 # original wrist pos
                 # gymutil.draw_lines(axes_geom, env.gym, env.viewer, env.envs[i], ori_wrist_pos_ij)
                 gymutil.draw_lines(purple_geom, env.gym, env.viewer, env.envs[i], ori_wrist_pos_ij)
+            # ====== 外力可视化部分 ======
+            # 需要确保env有apply_force_tensor和apply_force_pos_tensor属性
+            if hasattr(env, 'apply_force_tensor') and hasattr(env, 'apply_force_pos_tensor'):
+                for hand in range(2):
+                    scale = 0.1
+                    try:
+                        pos = env.apply_force_pos_tensor[i, env.wrist_indices[hand]].detach().cpu().numpy()
+                        force = env.apply_force_tensor[i, env.wrist_indices[hand]].detach().cpu().numpy()
+                        vec = force * scale
+                        length = float(np.linalg.norm(vec))
+                        if length < 1e-6:
+                            continue
+                        # 球的位置为外力末端
+                        ball_pos = pos + vec
+                    except Exception:
+                        continue  # skip hand if extraction fails
+                    try:
+                        # 绘制施加点黄色球
+                        start_geom = gymutil.WireframeSphereGeometry(
+                            0.03, 12, 12, color=(1, 1, 0)
+                        )
+                        start_pose = gymapi.Transform(gymapi.Vec3(float(pos[0]), float(pos[1]), float(pos[2])), r=None)
+                        gymutil.draw_lines(start_geom, env.gym, env.viewer, env.envs[i], start_pose)
+
+                        # 绘制末端红色球
+                        ball_geom = gymutil.WireframeSphereGeometry(
+                            0.03, 12, 12, color=(1, 0, 0)
+                        )
+                        ball_pose = gymapi.Transform(gymapi.Vec3(float(ball_pos[0]), float(ball_pos[1]), float(ball_pos[2])), r=None)
+                        gymutil.draw_lines(ball_geom, env.gym, env.viewer, env.envs[i], ball_pose)
+                    except Exception:
+                        print(f"Visualize Force Fallback to Line for Env {i}, Hand {hand}")
+                        # fallback: 画线
+                        start = gymapi.Vec3(float(pos[0]), float(pos[1]), float(pos[2]))
+                        end = gymapi.Vec3(float(ball_pos[0]), float(ball_pos[1]), float(ball_pos[2]))
+                        col = gymapi.Vec3(1, 0, 0)
+                        gymutil.draw_line(start, end, col, env.gym, env.viewer, env.envs[i])
     elif task in STEPPING:
         env.gym.clear_lines(env.viewer)
         # Create helper geometry used for visualization
