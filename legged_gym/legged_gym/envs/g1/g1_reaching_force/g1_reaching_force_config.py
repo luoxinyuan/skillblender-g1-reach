@@ -170,20 +170,20 @@ class G1ReachingForceCfg(LeggedRobotCfg):
             wrist_max_radius = 0.15
             l_wrist_pos_x = [-0.05, 0.15]
             l_wrist_pos_y = [-0.05, 0.15]
-            l_wrist_pos_z = [-0.15, 0.15]
+            l_wrist_pos_z = [-0.15, 0.15] # [-0.15, 0.15]
             r_wrist_pos_x = [-0.05, 0.15]
             r_wrist_pos_y = [-0.15, 0.05]
-            r_wrist_pos_z = [-0.15, 0.15]
+            r_wrist_pos_z = [-0.15, 0.15] # [-0.15, 0.15]
 
     # External force configuration
     class force:
         # Force ranges for X, Y, Z axes (in Newtons, in world frame)
-        apply_force_x_range = [-10.0, 10.0]
-        apply_force_y_range = [-10.0, 10.0]
-        apply_force_z_range = [-10.0, 10.0]
+        apply_force_x_range = [-30.0, 30.0]
+        apply_force_y_range = [-30.0, 30.0]
+        apply_force_z_range = [-30.0, 30.0]
         
         # Force duration (in simulation steps)
-        randomize_force_duration = [20, 60]  # min and max steps
+        randomize_force_duration = [100, 150]  # min and max steps
         
         # Force application position on hand link
         apply_force_pos_ratio_range = [0.0, 1.0]  # 0 = hand center, 1 = fingertip
@@ -210,6 +210,12 @@ class G1ReachingForceCfg(LeggedRobotCfg):
         
         # Update force phase continuously
         update_apply_force_phase = True
+        # If true use impedance-based reward (placeholder) for wrist tracking.
+        # When False, use the standard positional tracking reward (same as parent).
+        if_impedance = True
+        # Impedance stiffness (N/m) used to convert external force to an equivalent
+        # displacement: delta_x = F_ext / K. Can be tuned per task.
+        impedance_K = 200.0
 
     class rewards:
         base_height_target = 0.728

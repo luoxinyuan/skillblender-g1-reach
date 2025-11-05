@@ -412,3 +412,60 @@ class G1ReachingForce(G1Reaching):
             self.privileged_obs_buf = torch.cat([self.critic_history[i] for i in range(self.cfg.env.c_frame_stack)], dim=1)
         else:
             self.privileged_obs_buf = torch.cat([self.privileged_obs_buf, privileged_force_obs], dim=-1)
+
+    # ================================================ Rewards ================================================== #
+    def _reward_wrist_pos(self):
+        """
+        Override wrist position reward to allow an impedance-based placeholder.
+        If cfg.force.if_impedance is True, return a placeholder (zeros) so that
+        impedance controller code can later provide a custom reward. Otherwise
+        defer to the parent implementation (positional tracking).
+        Returns the same tuple shape as parent: (unscaled_reward, metric)
+        """
+        # if impedance mode is enabled, compute impedance-adjusted target:
+        # x_target = x_cmd + ori_wrist_pos + F_ext / K
+        if hasattr(self.cfg, 'force') and getattr(self.cfg.force, 'if_impedance', False):
+            # print("[IMPEDANCE_DEBUG] Computing impedance-adjusted wrist position reward")
+            K = float(getattr(self.cfg.force, 'impedance_K', 200.0))
+
+            # get commanded relative waypoint for current step: shape [num_envs, 2, 7]
+            x_cmd = self.target_wp[self.target_wp_i, self.target_wp_j]  # relative pose
+            # keep only position part
+            x_cmd_pos = x_cmd[:, :, :3]
+
+            # original wrist base positions (world) stored in ori_wrist_pos
+            ori_pos = self.ori_wrist_pos[:, :, :3]
+
+            # external forces applied in world frame at wrist bodies
+            # apply_force_tensor shape: [num_envs, num_bodies, 3]
+            # select wrist body forces -> [num_envs, 2, 3]
+            if hasattr(self, 'apply_force_tensor'):
+                F_ext = self.apply_force_tensor[:, self.wrist_indices, :]
+            else:
+                # fallback to zero forces
+                F_ext = torch.zeros((self.num_envs, len(self.wrist_indices), 3), device=self.device)
+
+            # convert forces to equivalent displacement using stiffness K
+            delta = F_ext / K
+
+            # impedance-adjusted reference target (world positions)
+            ref_target_pos = ori_pos + x_cmd_pos + delta
+
+            # compute current wrist positions world-frame
+            wrist_pos = self.rigid_state[:, self.wrist_indices, :7]
+            wrist_pos_diff = wrist_pos[:, :, :3] - ref_target_pos
+            wrist_pos_diff = torch.flatten(wrist_pos_diff, start_dim=1)  # [num_envs, 6]
+            wrist_pos_error = torch.mean(torch.abs(wrist_pos_diff), dim=1)
+            # debug print: periodically log first env values to help debugging
+            idx = 0
+            F0 = F_ext[idx].cpu().numpy() if isinstance(F_ext, torch.Tensor) else None
+            d0 = delta[idx].cpu().numpy() if isinstance(delta, torch.Tensor) else None
+            ref0 = ref_target_pos[idx].cpu().numpy() if isinstance(ref_target_pos, torch.Tensor) else None
+            err0 = float(wrist_pos_error[idx].cpu().numpy()) if isinstance(wrist_pos_error, torch.Tensor) else None
+            # print(f"[IMPEDANCE_DEBUG] env0 F_ext={F0}, delta={d0}, ref_target_pos={ref0}, wrist_err={err0}")
+            
+
+            return torch.exp(-4 * wrist_pos_error), wrist_pos_error
+
+        # otherwise use parent implementation (positional tracking)
+        return super()._reward_wrist_pos()
