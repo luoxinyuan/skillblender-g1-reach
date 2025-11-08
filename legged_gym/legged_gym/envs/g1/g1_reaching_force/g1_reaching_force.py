@@ -390,12 +390,18 @@ class G1ReachingForce(G1Reaching):
         # Update obs_history last entry (if present) and rebuild obs_buf from history
         if hasattr(self, 'obs_history') and len(self.obs_history) > 0:
             # obs_history elements have shape [num_envs, K]
-            self.obs_history[-1] = torch.cat([self.obs_history[-1], force_obs_noisy], dim=-1)
+            if self.cfg.env.use_force_in_obs:
+                self.obs_history[-1] = torch.cat([self.obs_history[-1], force_obs_noisy], dim=-1)
+            else:
+                self.obs_history[-1] = self.obs_history[-1]
             obs_buf_all = torch.stack([self.obs_history[i] for i in range(self.obs_history.maxlen)], dim=1)
             self.obs_buf = obs_buf_all.reshape(self.num_envs, -1)
         else:
             # fallback: append directly to current obs_buf
-            self.obs_buf = torch.cat([self.obs_buf, force_obs_noisy], dim=-1)
+            if self.cfg.env.use_force_in_obs:
+                self.obs_buf = torch.cat([self.obs_buf, force_obs_noisy], dim=-1)
+            else:
+                self.obs_buf = self.obs_buf
 
         # privileged obs: mirror same guarding as above and update critic_history
         if not hasattr(self, 'left_ee_apply_force') or not hasattr(self, 'right_ee_apply_force'):
@@ -463,7 +469,6 @@ class G1ReachingForce(G1Reaching):
             ref0 = ref_target_pos[idx].cpu().numpy() if isinstance(ref_target_pos, torch.Tensor) else None
             err0 = float(wrist_pos_error[idx].cpu().numpy()) if isinstance(wrist_pos_error, torch.Tensor) else None
             # print(f"[IMPEDANCE_DEBUG] env0 F_ext={F0}, delta={d0}, ref_target_pos={ref0}, wrist_err={err0}")
-            
 
             return torch.exp(-4 * wrist_pos_error), wrist_pos_error
 

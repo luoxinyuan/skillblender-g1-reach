@@ -38,11 +38,11 @@ class G1ReachingForceCfg(LeggedRobotCfg):
     class env(LeggedRobotCfg.env):
         # change the observation dim (added 6 for left/right hand force observation)
         num_actions = 21
-        frame_stack = 1
-        c_frame_stack = 3
+        frame_stack = 5 # 1
+        c_frame_stack = 5 # 3
         command_dim = 14
         force_obs_dim = 6  # 3 for left hand force + 3 for right hand force
-        num_single_obs = 3 * num_actions + 6 + command_dim + force_obs_dim
+        num_single_obs = 3 * num_actions + 6 + command_dim #+ force_obs_dim
         num_observations = int(frame_stack * num_single_obs)
         single_num_privileged_obs = 3 * num_actions + 60 + force_obs_dim
         num_privileged_obs = int(c_frame_stack * single_num_privileged_obs)
@@ -50,6 +50,8 @@ class G1ReachingForceCfg(LeggedRobotCfg):
         num_envs = 4096
         episode_length_s = 24  # episode length in seconds
         use_ref_actions = False
+
+        use_force_in_obs = False
 
     class asset(LeggedRobotCfg.asset):
         file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/g1/g1_29dof_lock_waist_rev_1_0_modified_situp.urdf'

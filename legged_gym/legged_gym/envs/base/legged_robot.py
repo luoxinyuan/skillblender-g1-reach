@@ -98,7 +98,7 @@ class LeggedRobot(BaseTask):
         # observation builder. The noise vector length should correspond to
         # the number of single obs entries before any tail is appended.
         tail_extra = 0
-        if hasattr(self.cfg.env, 'force_obs_dim'):
+        if hasattr(self.cfg.env, 'force_obs_dim') and self.cfg.env.use_force_in_obs:
             tail_extra = int(self.cfg.env.force_obs_dim)
         end = int(self.cfg.env.num_single_obs) - tail_extra
 
@@ -111,7 +111,7 @@ class LeggedRobot(BaseTask):
         # force observations in certain environments), account for that tail
         # so the noise indexing matches the actual layout.
         tail_extra = 0
-        if hasattr(self.cfg.env, 'force_obs_dim'):
+        if hasattr(self.cfg.env, 'force_obs_dim') and self.cfg.env.use_force_in_obs:
             tail_extra = int(self.cfg.env.force_obs_dim)
 
         # base euler xyz (3)
