@@ -175,57 +175,85 @@ class H1SquattingCfg(LeggedRobotCfg):
             min_root_height = 0.2
             max_root_height = 1.1
 
+    # class rewards:
+    #     base_height_target = 0.89
+    #     min_dist = 0.2
+    #     max_dist = 0.5
+    #     # put some settings here for LLM parameter tuning
+    #     target_joint_pos_scale = 0.17    # rad
+    #     target_feet_height = 0.06       # m
+    #     cycle_time = 0.64                # sec
+    #     # if true negative total rewards are clipped at zero (avoids early termination problems)
+    #     only_positive_rewards = True
+    #     # tracking reward = exp(error*sigma)
+    #     tracking_sigma = 5
+    #     max_contact_force = 700  # forces above this value are penalized
+
+    #     class scales:
+    #         # TODO: 1. stand_still 2. joint_pos*2 3. add command input
+    #         # reference motion tracking
+    #         # joint_pos = 5
+    #         squatting = 5
+    #         # feet_clearance = 0
+    #         # feet_contact_number = 0
+    #         # # gait
+    #         # feet_air_time = 0
+    #         # foot_slip = -0.05
+    #         feet_distance = 0.5
+    #         # knee_distance = 0.2
+    #         # # elbow_distance = 0.4
+    #         # # elbow_torso_distance = 0.4
+    #         # # contact
+    #         # feet_contact_forces = -0.01
+    #         # # vel tracking
+    #         # tracking_lin_vel = 0.
+    #         # tracking_ang_vel = 0.
+    #         # vel_mismatch_exp = 0.5  # lin_z; ang x,y
+    #         # low_speed = 0.2
+    #         # track_vel_hard = 0.5 * 2
+    #         # # base pos
+    #         default_joint_pos = 0.5
+    #         upper_body_pos = 1.
+    #         orientation = 1.
+    #         # base_height = 0.2
+    #         # base_acc = 0.2
+    #         # energy
+    #         # action_smoothness = -0.002
+    #         torques = -1e-5
+    #         dof_vel = -5e-4
+    #         dof_acc = -1e-7
+    #         # collision = -0.2
+    #         #### humanplus ####
+    #         # lin_vel_z = -0.1
+    #         # ang_vel_xy = -0.1
+    
     class rewards:
-        base_height_target = 0.89
+        base_height_target = 0.6
         min_dist = 0.2
         max_dist = 0.5
-        # put some settings here for LLM parameter tuning
-        target_joint_pos_scale = 0.17    # rad
-        target_feet_height = 0.06       # m
-        cycle_time = 0.64                # sec
-        # if true negative total rewards are clipped at zero (avoids early termination problems)
+        target_joint_pos_scale = 0.17
+        target_feet_height = 0.06
+        cycle_time = 1.0
         only_positive_rewards = True
-        # tracking reward = exp(error*sigma)
         tracking_sigma = 5
-        max_contact_force = 700  # forces above this value are penalized
+        max_contact_force = 700
 
         class scales:
-            # TODO: 1. stand_still 2. joint_pos*2 3. add command input
-            # reference motion tracking
-            # joint_pos = 5
-            squatting = 5
-            # feet_clearance = 0
-            # feet_contact_number = 0
-            # # gait
-            # feet_air_time = 0
-            # foot_slip = -0.05
-            feet_distance = 0.5
-            # knee_distance = 0.2
-            # # elbow_distance = 0.4
-            # # elbow_torso_distance = 0.4
-            # # contact
-            # feet_contact_forces = -0.01
-            # # vel tracking
-            # tracking_lin_vel = 0.
-            # tracking_ang_vel = 0.
-            # vel_mismatch_exp = 0.5  # lin_z; ang x,y
-            # low_speed = 0.2
-            # track_vel_hard = 0.5 * 2
-            # # base pos
-            default_joint_pos = 0.5
-            upper_body_pos = 1.
-            orientation = 1.
-            # base_height = 0.2
-            # base_acc = 0.2
-            # energy
-            # action_smoothness = -0.002
-            torques = -1e-5
-            dof_vel = -5e-4
-            dof_acc = -1e-7
-            # collision = -0.2
-            #### humanplus ####
-            # lin_vel_z = -0.1
-            # ang_vel_xy = -0.1
+            # joint_pos = 2.0
+            # feet_pos = 1.0
+            feet_clearance = 0.5
+            feet_contact_number = 1.0
+            feet_distance = 0.3
+            knee_distance = 0.5
+            default_joint_pos = 0.7
+            upper_body_pos = 0.7
+            orientation = 1.5
+            base_height = 0.5
+            base_acc = 0.3
+            torques = -2e-5
+            dof_vel = -8e-4
+            dof_acc = -2e-7
+            collision = -1.0
 
 
 class H1SquattingCfgPPO(LeggedRobotCfgPPO):

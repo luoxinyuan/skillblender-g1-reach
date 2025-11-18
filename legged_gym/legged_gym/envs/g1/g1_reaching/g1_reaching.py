@@ -127,8 +127,6 @@ class G1Reaching(LeggedRobot):
     def _init_target_wp(self):
         self.ori_wrist_pos = self.rigid_state[:, self.wrist_indices, :7].clone() # [num_envs, 2, 7], two hands
         self.target_wp, self.num_pairs, self.num_wp = sample_wp(self.device, num_points=2000000, num_wp=10, ranges=self.cfg.commands.ranges) # relative, self.target_wp.shape=[num_pairs, num_wp, 2, 7]
-        print(f"Sampled {self.num_pairs} waypoint pairs, each with {self.num_wp} waypoints.")
-        print(self.target_wp)
         self.target_wp_i = torch.randint(0, self.num_pairs, (self.num_envs,), device=self.device) # for each env, choose one seq, [num_envs]
         self.target_wp_j = torch.zeros(self.num_envs, dtype=torch.long, device=self.device) # for each env, the timestep in the seq is initialized to 0, [num_envs]
         # independent counter for the incremental updater (unbounded by num_wp)
@@ -388,8 +386,8 @@ class G1Reaching(LeggedRobot):
         self.compute_reward()
         env_ids = self.reset_buf.nonzero(as_tuple=False).flatten()
         self.reset_idx(env_ids)
-        # self.update_target_wp(env_ids) # NOTE: this line matters
-        self.update_target_wp_incremental(env_ids) # use incremental target updater
+        self.update_target_wp(env_ids) # NOTE: this line matters
+        # self.update_target_wp_incremental(env_ids) # use incremental target updater
         # self.update_target_wp_from_csv(env_ids)
         self.compute_observations() # in some cases a simulation step might be required to refresh some obs (for example body positions)
 
