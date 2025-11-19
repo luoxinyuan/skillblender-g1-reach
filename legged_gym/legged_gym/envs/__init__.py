@@ -38,6 +38,9 @@ from .h1.h1_walking.h1_walking_config import H1WalkingCfg, H1WalkingCfgPPO
 ### H1 Reaching
 from .h1.h1_reaching.h1_reaching import H1Reaching
 from .h1.h1_reaching.h1_reaching_config import H1ReachingCfg, H1ReachingCfgPPO
+### H1 Basic
+from .h1.h1_basic.h1_basic import H1Basic
+from .h1.h1_basic.h1_basic_config import H1BasicCfg, H1BasicCfgPPO
 ### H1 Stepping
 from .h1.h1_stepping.h1_stepping import H1Stepping
 from .h1.h1_stepping.h1_stepping_config import H1SteppingCfg, H1SteppingCfgPPO
@@ -157,6 +160,7 @@ task_registry.register( "h1_walking", H1Walking, H1WalkingCfg(), H1WalkingCfgPPO
 task_registry.register( "h1_reaching", H1Reaching, H1ReachingCfg(), H1ReachingCfgPPO(), 'h1/h1_reaching')
 task_registry.register( "h1_stepping", H1Stepping, H1SteppingCfg(), H1SteppingCfgPPO(), 'h1/h1_stepping')
 task_registry.register( "h1_squatting", H1Squatting, H1SquattingCfg(), H1SquattingCfgPPO(), 'h1/h1_squatting')
+task_registry.register( "h1_basic", H1Basic, H1BasicCfg(), H1BasicCfgPPO(), 'h1/h1_basic')
 task_registry.register( "h1_task_box", H1TaskBox, H1TaskBoxCfg(), H1TaskBoxCfgPPO(), 'h1/h1_task_box')
 task_registry.register( "h1_task_reach", H1TaskReach, H1TaskReachCfg(), H1TaskReachCfgPPO(), 'h1/h1_task_reach')
 task_registry.register( "h1_task_button", H1TaskButton, H1TaskButtonCfg(), H1TaskButtonCfgPPO(), 'h1/h1_task_button')
