@@ -109,24 +109,37 @@ class H1BasicCfg(LeggedRobotCfg):
         only_positive_rewards = True
         tracking_sigma = 5
         max_contact_force = 700
-
-        # punch-specific reward tuning
-        punch_forward_coeff = 1.0
-        punch_extension_coeff = 0.5
-        punch_extension_baseline = 0.05
-        punch_impact_coeff = 0.01
-        punch_torque_coeff = 1e-6
+        sway_roll_amplitude = 0.35
+        sway_roll_tracking_sigma = 15.0
+        sway_roll_vel_sigma = 1.0
+        sway_lateral_speed_target = 0.3
+        # # lie reward parameters (used by _reward_lie)
+        # lie_height_target = 0.6
+        # lie_speed_target = 0.05
+        # lie_orient_target = 0.8
+        # lie_contact_allowed = 1
+        # # prone reward parameters
+        # prone_height_target = 0.5
+        # prone_orient_target = 1.0
+        # prone_speed_target = 0.05
+        # prone_contact_allowed = 1
 
         class scales:
-            feet_distance = 0.5
-            knee_distance = 0.2
-            default_joint_pos = 0.5
-            upper_body_pos = 0.5
-            orientation = 1.
-            punch = 1.0
-            torques = -1e-5
-            dof_vel = -5e-4
+            feet_distance = 0.2
+            knee_distance = 0.1
+            default_joint_pos = 0.25
+            upper_body_pos = 0.25
+            orientation = 0.5
+            sway = 1.5
+            torques = -5e-6
+            dof_vel = -2.5e-4
             dof_acc = -1e-7
+            
+            # feet_air_time = 1.0
+            # jump = 1.0
+            # bend = 1.0
+            # lie = 1.0
+            # prone = 1.0
 
 
 class H1BasicCfgPPO(LeggedRobotCfgPPO):
@@ -154,7 +167,7 @@ class H1BasicCfgPPO(LeggedRobotCfgPPO):
 
         # logging
         save_interval = 1000  # check for potential saves every this many iterations
-        experiment_name = 'h1_squatting'
+        experiment_name = 'h1_basic'
         run_name = ''
         # load and resume
         resume = False

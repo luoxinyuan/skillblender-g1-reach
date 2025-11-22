@@ -373,6 +373,45 @@ class H1Basic(LeggedRobot):
         upper_body_diff = joint_diff[:, torso_index:] # start from torso
         upper_body_error = torch.mean(torch.abs(upper_body_diff), dim=1)
         return torch.exp(-4 * upper_body_error), upper_body_error
+
+    def _reward_bend(self):
+        """
+        Reward the robot for bending (pitching) its torso/base.
+        Uses the base pitch angle (self.base_euler_xyz[:,1]) as a proxy for bending.
+        Returns a scalar reward and a metric (absolute pitch) for logging.
+        """
+        # base_euler_xyz: [roll, pitch, yaw]
+        pitch = self.base_euler_xyz[:, 1]
+        bend_amount = torch.abs(pitch)
+        # use a soft saturating function so large angles don't dominate
+        coeff = getattr(self.cfg.rewards, 'bend_exp_coeff', 5.0)
+        reward = torch.tanh(bend_amount * coeff)
+        return reward, bend_amount
+
+    def _reward_sway(self):
+        """Encourage rhythmic lateral swaying by matching roll and roll velocity to a sinusoid."""
+        phase = self._get_phase()
+        roll = self.base_euler_xyz[:, 0]
+
+        roll_amp = getattr(self.cfg.rewards, 'sway_roll_amplitude', 0.35)
+        desired_roll = roll_amp * torch.sin(2 * torch.pi * phase)
+        roll_error = roll - desired_roll
+        tracking_sigma = getattr(self.cfg.rewards, 'sway_roll_tracking_sigma', 12.0)
+        roll_tracking = torch.exp(-torch.square(roll_error) * tracking_sigma)
+
+        cycle_time = self.cfg.rewards.cycle_time
+        desired_roll_vel = (2 * torch.pi / cycle_time) * roll_amp * torch.cos(2 * torch.pi * phase)
+        roll_vel = self.base_ang_vel[:, 0]
+        vel_error = roll_vel - desired_roll_vel
+        vel_sigma = getattr(self.cfg.rewards, 'sway_roll_vel_sigma', 1.5)
+        vel_tracking = torch.exp(-torch.square(vel_error) * vel_sigma)
+
+        lateral_speed = torch.abs(self.base_lin_vel[:, 1])
+        lateral_target = getattr(self.cfg.rewards, 'sway_lateral_speed_target', 0.25)
+        lateral_score = torch.tanh(lateral_speed / (lateral_target + 1e-6))
+
+        reward = 0.5 * roll_tracking + 0.2 * vel_tracking + 0.3 * lateral_score
+        return reward, torch.abs(roll)
     
     def _reward_base_height(self):
         """
@@ -585,56 +624,112 @@ class H1Basic(LeggedRobot):
         # Penalize motion at zero commands
         return torch.sum(torch.abs(self.dof_pos - self.default_dof_pos), dim=1) * (torch.norm(self.commands[:, :2], dim=1) < 0.1)
 
-    def _reward_punch(self):
+    def _reward_jump(self):
         """
-        Reward for a punching motion: encourage a fast forward wrist velocity and arm extension
-        while avoiding hard impacts or self-collisions. This reward has multiple components:
-        - forward_vel: reward for forward (x) velocity of the wrist(s)
-        - extend: reward for elbow extension (increasing distance between shoulder and wrist)
-        - impact_penalty: negative reward for high contact forces on hands or penalised parts
-        - torque_penalty: small penalty for large torques to keep motion realistic
-        The method returns a scalar reward and a diagnostic tuple (combined components).
+        Composite jump reward:
+        - reward time feet are in the air (self.feet_air_time)
+        - reward positive base vertical velocity and gained height above a baseline
+        - penalize hard landings (large negative vertical velocity when feet contact)
+        Returns:
+            (torch.Tensor): per-env scalar reward
+            (torch.Tensor): diagnostic metric (mean feet air time)
         """
-        # wrist linear velocity is present in rigid_state[:, wrist_indices, 7:10]
-        # if wrist_indices has shape (2,), compute per-env average or max
-        try:
-            wrist_lin_vel = self.rigid_state[:, self.wrist_indices, 7:10]
-        except Exception:
-            # fallback: use base linear velocity as proxy
-            wrist_lin_vel = self.base_lin_vel.unsqueeze(1).repeat(1, len(self.wrist_indices), 1)
+        # contact mask per foot and per env
+        contact = self.contact_forces[:, self.feet_indices, 2] > 5.0
+        # per-env in-air flag (all feet not in contact)
+        in_air = (~contact).all(dim=1)
 
-        # forward velocity in the robot's local frame (x-axis)
-        forward_vel = wrist_lin_vel[:, :, 0]
-        forward_vel_score = torch.max(forward_vel, dim=1).values  # prefer the faster arm
+        # average air time across feet (kept small by logic in _reward_feet_air_time)
+        avg_air_time = torch.mean(self.feet_air_time, dim=1)
+        air_reward = torch.tanh(avg_air_time * 6.0)  # saturates nicely between 0..1
 
-        # arm extension: measure distance between elbow and wrist positions (3D)
-        elbow_pos = self.rigid_state[:, self.elbow_indices, :3]
-        wrist_pos = self.rigid_state[:, self.wrist_indices, :3]
-        # compute pairwise distances (assuming ordering matches left/right)
-        arm_ext = torch.norm(wrist_pos - elbow_pos, dim=2)
-        arm_ext_score = torch.max(arm_ext, dim=1).values
+        # height bonus: reward being above the configured base height target
+        base_z = self.root_states[:, 2]
+        height_delta = base_z - self.cfg.rewards.base_height_target
+        height_bonus = torch.tanh(torch.clamp(height_delta, min=0.0) * 5.0)
 
-        # penalize strong contacts on the hands (if any contact indices map to hands)
-        hand_contacts = torch.zeros(self.num_envs, device=self.device)
-        if hasattr(self, 'penalised_contact_indices') and self.penalised_contact_indices is not None:
-            # check contact forces for penalised indices intersecting wrist indices
-            # contact_forces shape: N, B, 3
-            cf = torch.norm(self.contact_forces[:, self.wrist_indices, :], dim=-1)
-            hand_contacts = torch.max(cf, dim=1).values
+        # landing penalty: when feet are contacting, large downward base vel is bad
+        downward_vel = -torch.minimum(self.base_lin_vel[:, 2], torch.zeros_like(self.base_lin_vel[:, 2]))
+        landed = contact.any(dim=1)
+        landing_penalty = downward_vel * landed.float()
+        # square the penalty to emphasize hard impacts
+        landing_penalty = landing_penalty * landing_penalty
 
-        # torque penalty (prefer smaller torques)
-        torque_penalty = torch.sum(torch.square(self.torques), dim=1)
+        # combine terms: encourage air time and height, penalize hard landings
+        reward = 1.2 * air_reward + 1.0 * height_bonus - 2.5 * landing_penalty
 
-        # combine terms: higher forward velocity and extension increase reward, contacts/torque reduce it
-        punch_reward = (
-            self.cfg.rewards.punch_forward_coeff * forward_vel_score
-            + self.cfg.rewards.punch_extension_coeff * (arm_ext_score - self.cfg.rewards.punch_extension_baseline)
-            - self.cfg.rewards.punch_impact_coeff * hand_contacts
-            - self.cfg.rewards.punch_torque_coeff * torque_penalty
-        )
+        # return also a metric (avg air time) for logging
+        return reward, avg_air_time
 
-        # smooth and clamp: encourage positive rewards only if configured
-        if getattr(self.cfg.rewards, 'only_positive_rewards', False):
-            punch_reward = torch.clamp(punch_reward, min=0.0)
+    def _reward_lie(self):
+        """
+        Reward the robot for lying down. Heuristics:
+        - low base height (root z below a threshold)
+        - low linear velocity (should be stationary)
+        - large absolute roll/pitch (base_euler_xyz roll/pitch large -> robot is laid over)
 
-        return punch_reward
+        Returns (reward, metric) where metric is the combined lie score for logging.
+        """
+        # base height: lower is better (below lie_height_target)
+        base_z = self.root_states[:, 2]
+        lie_height_target = getattr(self.cfg.rewards, 'lie_height_target', 0.5)
+        height_term = torch.clamp(lie_height_target - base_z, min=0.0)
+        # normalize / saturate
+        height_score = torch.tanh(height_term * 5.0)
+
+        # low linear speed
+        lin_speed = torch.norm(self.base_lin_vel, dim=1)
+        speed_target = getattr(self.cfg.rewards, 'lie_speed_target', 0.1)
+        speed_score = torch.tanh(torch.clamp((speed_target - lin_speed), min=0.0) * 10.0)
+
+        # orientation: encourage large abs(roll) or abs(pitch)
+        abs_rp = torch.abs(self.base_euler_xyz[:, :2])
+        max_rp = torch.max(abs_rp, dim=1).values
+        orient_target = getattr(self.cfg.rewards, 'lie_orient_target', 1.0)
+        orient_score = torch.tanh(torch.clamp(max_rp - orient_target, min=0.0) * 3.0)
+
+        # combine scores
+        score = 0.6 * height_score + 0.3 * orient_score + 0.6 * speed_score
+
+        # optional penalty for still being upright contacts (if many feet contact and height not low)
+        contact = self.contact_forces[:, self.feet_indices, 2] > 5.0
+        foot_contact_count = torch.sum(contact, dim=1).float()
+        contact_penalty = torch.clamp(foot_contact_count - getattr(self.cfg.rewards, 'lie_contact_allowed', 2), min=0.0)
+        score = score - 0.3 * torch.tanh(contact_penalty)
+
+        return score, score
+
+    def _reward_prone(self):
+        """
+        Reward for lying prone (face-down):
+        - encourage low base height below a target
+        - encourage large absolute pitch (torso pitched forward/back) indicating face-down
+        - encourage low linear speed once prone
+
+        Returns (reward, metric) where metric is absolute pitch for logging.
+        """
+        base_z = self.root_states[:, 2]
+        prone_height_target = getattr(self.cfg.rewards, 'prone_height_target', 0.5)
+        height_term = torch.clamp(prone_height_target - base_z, min=0.0)
+        height_score = torch.tanh(height_term * 6.0)
+
+        # pitch is base_euler_xyz[:,1] (rad). For prone we want a large abs(pitch)
+        pitch = self.base_euler_xyz[:, 1]
+        abs_pitch = torch.abs(pitch)
+        prone_orient_target = getattr(self.cfg.rewards, 'prone_orient_target', 1.0)
+        orient_score = torch.tanh(torch.clamp(abs_pitch - prone_orient_target, min=0.0) * 4.0)
+
+        lin_speed = torch.norm(self.base_lin_vel, dim=1)
+        prone_speed_target = getattr(self.cfg.rewards, 'prone_speed_target', 0.05)
+        speed_score = torch.tanh(torch.clamp((prone_speed_target - lin_speed), min=0.0) * 12.0)
+
+        score = 0.6 * height_score + 0.8 * orient_score + 0.6 * speed_score
+
+        # reduce score if too many foot contacts remain (not fully prone)
+        contact = self.contact_forces[:, self.feet_indices, 2] > 5.0
+        foot_contact_count = torch.sum(contact, dim=1).float()
+        contact_allowed = getattr(self.cfg.rewards, 'prone_contact_allowed', 1)
+        contact_penalty = torch.clamp(foot_contact_count - contact_allowed, min=0.0)
+        score = score - 0.4 * torch.tanh(contact_penalty)
+
+        return score, abs_pitch
