@@ -412,6 +412,106 @@ class H1Basic(LeggedRobot):
 
         reward = 0.5 * roll_tracking + 0.2 * vel_tracking + 0.3 * lateral_score
         return reward, torch.abs(roll)
+
+    def _reward_wave(self):
+        """
+        Encourage the robot to wave its arms (wrist lateral oscillation).
+        Uses wrist lateral (y) position and approximate lateral velocity to match a sinusoidal pattern.
+        Returns (reward, metric) where metric is mean absolute wrist lateral position.
+        """
+        phase = self._get_phase()
+        cycle_time = self.cfg.rewards.cycle_time
+
+        # desired sinusoidal lateral motion (y) and its derivative (velocity)
+        amp = getattr(self.cfg.rewards, 'wave_amp', 0.25)
+        desired_pos = amp * torch.sin(2 * torch.pi * phase).unsqueeze(1)  # N,1
+        desired_vel = (2 * torch.pi / cycle_time) * amp * torch.cos(2 * torch.pi * phase)
+
+        # read wrist positions (world frame). Use y coordinate (index 1)
+        if self.wrist_indices.numel() == 0:
+            # no wrists available -> zero reward
+            return torch.zeros(self.num_envs, device=self.device), torch.zeros(self.num_envs, device=self.device)
+
+        wrist_pos = self.rigid_state[:, self.wrist_indices, :3]  # N, n_wrist, 3
+        wrist_pos_y = wrist_pos[:, :, 1]  # N, n_wrist
+
+        # approximate lateral velocity from change in rigid_state positions
+        last_wrist_pos = self.last_rigid_state[:, self.wrist_indices, :3]
+        wrist_vel = (wrist_pos - last_wrist_pos) / (self.dt + 1e-12)
+        wrist_vel_y = wrist_vel[:, :, 1]
+
+        # assume two wrists (left,right). assign anti-phase desired for second wrist if available
+        n_wrist = wrist_pos_y.shape[1]
+        desired_pos_vec = desired_pos.repeat(1, n_wrist)
+        # make right wrist anti-phase if we have two wrists
+        if n_wrist >= 2:
+            desired_pos_vec[:, 1] = -desired_pos_vec[:, 1]
+
+        # desired velocity per wrist (scalar) - anti-phase for second wrist
+        desired_vel_vec = desired_vel.unsqueeze(1).repeat(1, n_wrist)
+        if n_wrist >= 2:
+            desired_vel_vec[:, 1] = -desired_vel_vec[:, 1]
+
+        pos_err = wrist_pos_y - desired_pos_vec
+        vel_err = wrist_vel_y - desired_vel_vec
+
+        pos_sigma = getattr(self.cfg.rewards, 'wave_pos_sigma', 20.0)
+        vel_sigma = getattr(self.cfg.rewards, 'wave_vel_sigma', 1.0)
+
+        pos_tracking = torch.exp(-torch.square(pos_err) * pos_sigma)
+        vel_tracking = torch.exp(-torch.square(vel_err) * vel_sigma)
+
+        # lateral speed encouragement (so motion actually happens)
+        lateral_speed = torch.tanh(torch.mean(torch.abs(wrist_vel_y), dim=1) / (getattr(self.cfg.rewards, 'wave_speed_target', 0.1) + 1e-6))
+
+        # combine per-wrist tracking (mean across wrists)
+        tracking = 0.6 * torch.mean(pos_tracking, dim=1) + 0.3 * torch.mean(vel_tracking, dim=1) + 0.1 * lateral_speed
+
+        metric = torch.mean(torch.abs(wrist_pos_y), dim=1)
+        return tracking, metric
+
+    def _reward_kick(self):
+        """
+        Encourage a single-leg kicking motion:
+        - keep the stance foot planted
+        - swing foot should lift high and travel forward quickly
+        Returns (reward, metric) where metric is swing-foot forward velocity.
+        """
+        num_feet = self.feet_indices.numel()
+        if num_feet == 0:
+            zeros = torch.zeros(self.num_envs, device=self.device)
+            return zeros, zeros
+
+        contact = self.contact_forces[:, self.feet_indices, 2] > 5.0
+        swing_idx = int(getattr(self.cfg.rewards, 'kick_swing_foot', 1))
+        swing_idx = max(0, min(num_feet - 1, swing_idx))
+        stance_idx = int(getattr(self.cfg.rewards, 'kick_stance_foot', 0))
+        stance_idx = max(0, min(num_feet - 1, stance_idx))
+        if stance_idx == swing_idx and num_feet > 1:
+            stance_idx = (swing_idx + 1) % num_feet
+
+        swing_body_index = self.feet_indices[swing_idx]
+        stance_contact = contact[:, stance_idx].float()
+        swing_air = (~contact[:, swing_idx]).float()
+
+        swing_height = self.rigid_state[:, swing_body_index, 2]
+        foot_vel = self.rigid_state[:, swing_body_index, 7:10]
+        forward_axis = int(getattr(self.cfg.rewards, 'kick_forward_axis', 0))
+        forward_axis = max(0, min(2, forward_axis))
+        forward_vel = foot_vel[:, forward_axis]
+
+        height_target = getattr(self.cfg.rewards, 'kick_height_target', 0.4)
+        height_gain = getattr(self.cfg.rewards, 'kick_height_gain', 6.0)
+        vel_gain = getattr(self.cfg.rewards, 'kick_vel_gain', 1.5)
+
+        height_score = torch.tanh(torch.clamp(swing_height - height_target, min=0.0) * height_gain)
+        vel_score = torch.tanh(torch.clamp(forward_vel, min=0.0) * vel_gain)
+
+        single_leg_bonus = getattr(self.cfg.rewards, 'kick_single_leg_bonus', 1.0)
+        single_leg_gate = 0.2 + single_leg_bonus * stance_contact * swing_air
+
+        reward = single_leg_gate * (0.6 * height_score + 0.4 * vel_score)
+        return reward, forward_vel
     
     def _reward_base_height(self):
         """

@@ -199,26 +199,27 @@ class H1SquattingCfg(LeggedRobotCfg):
     #         dof_acc = -1e-7
     
     class rewards:
-        base_height_target = 0.89
+        base_height_target = 0.75
         min_dist = 0.2
-        max_dist = 0.5
+        max_dist = 0.4
         target_joint_pos_scale = 0.17
-        target_feet_height = 0.06
-        cycle_time = 0.64
+        target_feet_height = 0.05
+        cycle_time = 0.5
         only_positive_rewards = True
         tracking_sigma = 5
         max_contact_force = 700
 
         class scales:
             squatting = 5
-            feet_distance = 0.5
-            knee_distance = 0.2
-            default_joint_pos = 0.5
-            upper_body_pos = 0.5
-            orientation = 1.
+            # joint_pos = 2.0
+            feet_distance = 0.3
+            knee_distance = 0.5
+            elbow_distance = 0.4
+            orientation = 1.0
             torques = -1e-5
             dof_vel = -5e-4
             dof_acc = -1e-7
+
 
 
 class H1SquattingCfgPPO(LeggedRobotCfgPPO):

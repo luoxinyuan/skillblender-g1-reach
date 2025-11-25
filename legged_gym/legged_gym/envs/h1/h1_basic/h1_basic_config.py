@@ -113,6 +113,18 @@ class H1BasicCfg(LeggedRobotCfg):
         sway_roll_tracking_sigma = 15.0
         sway_roll_vel_sigma = 1.0
         sway_lateral_speed_target = 0.3
+        # wave parameters
+        wave_amp = 0.25
+        wave_pos_sigma = 20.0
+        wave_vel_sigma = 1.0
+        wave_speed_target = 0.1
+        # kick_swing_foot = 1
+        # kick_stance_foot = 0
+        # kick_height_target = 0.4
+        # kick_height_gain = 6.0
+        # kick_vel_gain = 1.5
+        # kick_forward_axis = 0
+        # kick_single_leg_bonus = 1.0
         # # lie reward parameters (used by _reward_lie)
         # lie_height_target = 0.6
         # lie_speed_target = 0.05
@@ -130,7 +142,9 @@ class H1BasicCfg(LeggedRobotCfg):
             default_joint_pos = 0.25
             upper_body_pos = 0.25
             orientation = 0.5
-            sway = 1.5
+            # sway = 1.5
+            wave = 2.0
+            # kick = 2.0
             torques = -5e-6
             dof_vel = -2.5e-4
             dof_acc = -1e-7
