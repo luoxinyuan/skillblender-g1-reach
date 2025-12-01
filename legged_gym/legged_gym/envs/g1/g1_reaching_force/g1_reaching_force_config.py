@@ -169,13 +169,13 @@ class G1ReachingForceCfg(LeggedRobotCfg):
             ang_vel_yaw = [-0, 0]
             heading = [-0, 0]
             # wrist pos command ranges
-            wrist_max_radius = 0.5
+            wrist_max_radius = 0.15
             l_wrist_pos_x = [-0.05, 0.15]
             l_wrist_pos_y = [-0.05, 0.15]
-            l_wrist_pos_z = [-0.5, 0.15] # [-0.15, 0.15]
+            l_wrist_pos_z = [-0.15, 0.15] # [-0.15, 0.15]
             r_wrist_pos_x = [-0.05, 0.15]
             r_wrist_pos_y = [-0.15, 0.05]
-            r_wrist_pos_z = [-0.5, 0.15] # [-0.15, 0.15]
+            r_wrist_pos_z = [-0.15, 0.15] # [-0.15, 0.15]
 
     # External force configuration
     class force:
@@ -233,6 +233,7 @@ class G1ReachingForceCfg(LeggedRobotCfg):
         class scales:
             # wrist tracking
             wrist_pos = 5 * 2
+            wrist_ori = 10 # 2.5
             # stability
             feet_distance = 0.5
             default_joint_pos = 0.5 * 4

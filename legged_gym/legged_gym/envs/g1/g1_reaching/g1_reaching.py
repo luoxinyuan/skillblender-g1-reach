@@ -497,6 +497,21 @@ class G1Reaching(LeggedRobot):
         wrist_pos_diff = torch.flatten(wrist_pos_diff, start_dim=1) # [num_envs, 6]
         wrist_pos_error = torch.mean(torch.abs(wrist_pos_diff), dim=1)
         return torch.exp(-4 * wrist_pos_error), wrist_pos_error
+
+    def _reward_wrist_ori(self):
+        """Reward tracking of wrist orientation (quaternion)."""
+        wrist_quat = self.rigid_state[:, self.wrist_indices, 3:7]
+        ref_quat = self.ref_wrist_pos[:, :, 3:7]
+
+        wrist_quat = wrist_quat / torch.clamp(torch.norm(wrist_quat, dim=-1, keepdim=True), min=1e-6)
+        ref_quat = ref_quat / torch.clamp(torch.norm(ref_quat, dim=-1, keepdim=True), min=1e-6)
+
+        dot = torch.sum(wrist_quat * ref_quat, dim=-1)
+        dot = torch.clamp(torch.abs(dot), 0., 1.)
+        ang_error = 2. * torch.acos(dot)
+        ori_error = torch.mean(ang_error, dim=1)
+
+        return torch.exp(-4 * ori_error), ori_error
         
 
     def _reward_feet_distance(self):

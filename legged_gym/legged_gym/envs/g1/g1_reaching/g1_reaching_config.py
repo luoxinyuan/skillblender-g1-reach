@@ -215,6 +215,7 @@ class G1ReachingCfg(LeggedRobotCfg):
             # reference motion tracking
             # joint_pos = 5
             wrist_pos = 5 * 2
+            wrist_ori = 2.5
             # feet_clearance = 0
             # feet_contact_number = 0
             # # gait
