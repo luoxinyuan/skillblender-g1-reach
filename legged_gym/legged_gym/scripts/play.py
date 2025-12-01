@@ -243,7 +243,7 @@ def visualize_task(task, env):
     elif task in TASK_CABINET:
         # no need to visualize
         pass
-    elif task in ['h1_imitation', 'h1_exbody']:
+    elif task in ['h1_imitation', 'h1_exbody', 'h1_basic', 'g1_basic']:
         pass
     else:
         raise NotImplementedError(f"Task {task} is not supported for visualization")
