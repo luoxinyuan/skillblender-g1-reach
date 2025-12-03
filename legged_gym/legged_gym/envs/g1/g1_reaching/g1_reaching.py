@@ -210,7 +210,7 @@ class G1Reaching(LeggedRobot):
         self.target_wp_i = torch.where(resample_i, torch.randint(0, self.num_pairs, (self.num_envs,), device=self.device), self.target_wp_i)
 
 
-    def update_target_wp_from_csv(self, reset_env_ids, filename="/home/xinyuan/point.csv", loop=True):
+    def update_target_wp_from_csv(self, reset_env_ids, filename="/home/xinyuan/ee14.csv", loop=True):
         """
         Load a local CSV itinerary of waypoints (one row per timestep). Each row may
         contain 14 columns: left 7 (x,y,z,qx,qy,qz,qw) followed by right 7. If the
@@ -276,7 +276,7 @@ class G1Reaching(LeggedRobot):
         # index into first dim with per-env indices
         # result: [num_envs, 2, 7]
         offset = getattr(self, 'target_wp_csv_offset', torch.zeros((self.num_envs, 2, 7), device=self.device))
-        self.ref_wrist_pos = self.target_wp_csv[self.target_wp_csv_j] # + self.ori_wrist_pos + offset
+        self.ref_wrist_pos = self.target_wp_csv[self.target_wp_csv_j] + self.ori_wrist_pos + offset
 
         # print the hand pose command being sent to the robot (show up to first 3 envs)
         try:
@@ -386,12 +386,11 @@ class G1Reaching(LeggedRobot):
         self.compute_reward()
         env_ids = self.reset_buf.nonzero(as_tuple=False).flatten()
         self.reset_idx(env_ids)
-        # self.update_target_wp(env_ids) # NOTE: this line matters
+        self.update_target_wp(env_ids) # NOTE: this line matters
         # self.update_target_wp_incremental(env_ids) # use incremental target updater
-        self.update_target_wp_from_csv(env_ids)
+        # self.update_target_wp_from_csv(env_ids)
         self.compute_observations() # in some cases a simulation step might be required to refresh some obs (for example body positions)
-        # 输出实际wrist pos
-        print(f"Actual wrist pos (first env): {self.rigid_state[0, self.wrist_indices, :7].cpu().numpy()}")
+
         self.last_last_actions[:] = torch.clone(self.last_actions[:])
         self.last_actions[:] = self.actions[:]
         self.last_dof_vel[:] = self.dof_vel[:]

@@ -195,6 +195,13 @@ class G1ReachingCfg(LeggedRobotCfg):
             r_wrist_pos_x = [-0.05, 0.15]
             r_wrist_pos_y = [-0.15, 0.05]
             r_wrist_pos_z = [-0.15, 0.15]
+            # orientation ranges (roll, pitch, yaw in rad)
+            l_wrist_ori_roll = [-0.5, 0.5]
+            l_wrist_ori_pitch = [-0.7, 0.7]
+            l_wrist_ori_yaw = [-1.0, 1.0]
+            r_wrist_ori_roll = [-0.5, 0.5]
+            r_wrist_ori_pitch = [-0.7, 0.7]
+            r_wrist_ori_yaw = [-1.0, 1.0]
 
     class rewards:
         base_height_target = 0.728

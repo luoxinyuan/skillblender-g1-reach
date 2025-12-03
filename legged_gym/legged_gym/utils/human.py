@@ -2,6 +2,39 @@ import numpy as np
 import torch
 from torch.nn.utils.rnn import pad_sequence
 
+
+def _euler_to_quaternion(roll, pitch, yaw):
+    """Convert roll/pitch/yaw (in rad) tensors into normalized quaternions."""
+    cr = torch.cos(roll * 0.5)
+    sr = torch.sin(roll * 0.5)
+    cp = torch.cos(pitch * 0.5)
+    sp = torch.sin(pitch * 0.5)
+    cy = torch.cos(yaw * 0.5)
+    sy = torch.sin(yaw * 0.5)
+
+    qw = cr * cp * cy + sr * sp * sy
+    qx = sr * cp * cy - cr * sp * sy
+    qy = cr * sp * cy + sr * cp * sy
+    qz = cr * cp * sy - sr * sp * cy
+
+    quat = torch.stack([qx, qy, qz, qw], dim=-1)
+    return quat / torch.clamp(quat.norm(dim=-1, keepdim=True), min=1e-8)
+
+
+def _sample_angle(num_samples, bounds, device):
+    low, high = float(bounds[0]), float(bounds[1])
+    return torch.rand(num_samples, device=device) * (high - low) + low
+
+
+def _sample_hand_quat(num_samples, ranges, prefix, device):
+    suffixes = ("roll", "pitch", "yaw")
+    if not all(hasattr(ranges, f"{prefix}_wrist_ori_{s}") for s in suffixes):
+        return None
+    roll = _sample_angle(num_samples, getattr(ranges, f"{prefix}_wrist_ori_roll"), device)
+    pitch = _sample_angle(num_samples, getattr(ranges, f"{prefix}_wrist_ori_pitch"), device)
+    yaw = _sample_angle(num_samples, getattr(ranges, f"{prefix}_wrist_ori_yaw"), device)
+    return _euler_to_quaternion(roll, pitch, yaw)
+
 def load_target_jt(device, filename, offset=None, rng=None):
     target_jt = np.load(f"data/{filename}", allow_pickle=True)
     if len(target_jt.shape) == 2: # not 1 or 3
@@ -44,10 +77,16 @@ def sample_wp(device, num_points, num_wp, ranges):
     
     num_pairs = min(l_positions.size(0), r_positions.size(0))
     positions = torch.stack([l_positions[:num_pairs], r_positions[:num_pairs]], dim=1) # (num_pairs, 2, 3)
+    positions = positions.to(device)
     
     # rotation (quaternion)
-    quaternions = torch.randn(num_pairs, 2, 4)
-    quaternions = quaternions / quaternions.norm(dim=-1, keepdim=True)
+    l_quat = _sample_hand_quat(num_pairs, ranges, 'l', device)
+    r_quat = _sample_hand_quat(num_pairs, ranges, 'r', device)
+    if l_quat is not None and r_quat is not None:
+        quaternions = torch.stack([l_quat, r_quat], dim=1)
+    else:
+        quaternions = torch.randn(num_pairs, 2, 4, device=device)
+        quaternions = quaternions / torch.clamp(quaternions.norm(dim=-1, keepdim=True), min=1e-8)
     
     # concat
     wp = torch.cat([positions, quaternions], dim=-1) # (num_pairs, 2, 7)
