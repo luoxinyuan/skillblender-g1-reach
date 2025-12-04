@@ -353,7 +353,7 @@ def play(args):
         )
 
     max_steps = int(env.max_episode_length)
-    if args.task in REACHING+TASK_REACH:
+    if args.task in REACHING+TASK_REACH+REACHING_FORCE:
         last_ref_wrist_pos = env.ref_wrist_pos[robot_index][:,:3].cpu().numpy()
     if args.task in STEPPING:
         last_ref_feet_pos = env.ref_feet_pos[robot_index][:,:2].cpu().numpy()
@@ -423,7 +423,7 @@ def play(args):
                 }
             )
 
-            if args.task in REACHING+TASK_REACH:
+            if args.task in REACHING+TASK_REACH+REACHING_FORCE:
                 ref_wrist_pos = env.ref_wrist_pos[robot_index][:,:3].cpu().numpy()
                 wrist_pos = env.rigid_state[robot_index, env.wrist_indices, :3].cpu().numpy()
                 
