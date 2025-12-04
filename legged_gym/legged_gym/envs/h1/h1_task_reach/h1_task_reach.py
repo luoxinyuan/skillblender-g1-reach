@@ -128,6 +128,10 @@ class H1TaskReach(LeggedRobot):
         self.target_wp, self.num_pairs, self.num_wp = sample_rp(self.device, num_points=2000000, num_wp=10, ranges=self.cfg.commands.ranges) # relative, self.target_wp.shape=[num_pairs, num_wp, 2, 7]
         self.target_wp_i = torch.randint(0, self.num_pairs, (self.num_envs,), device=self.device) # for each env, choose one seq, [num_envs]
         self.target_wp_j = torch.zeros(self.num_envs, dtype=torch.long, device=self.device) # for each env, the timestep in the seq is initialized to 0, [num_envs]
+        
+        self.target_wp_csv = None
+        self.target_wp_csv_j = torch.zeros(self.num_envs, dtype=torch.long, device=self.device)
+        
         self.target_wp_dt = 1 / self.cfg.human.freq
         self.target_wp_update_steps = self.target_wp_dt / self.dt # not necessary integer
         assert self.dt <= self.target_wp_dt, f"self.dt {self.dt} must be less than self.target_wp_dt {self.target_wp_dt}"
@@ -140,7 +144,7 @@ class H1TaskReach(LeggedRobot):
         self.delayed_obs_target_wp_steps = self.cfg.human.delay / self.target_wp_dt
         self.delayed_obs_target_wp_steps_int = sample_int_from_float(self.delayed_obs_target_wp_steps)
         self.update_target_wp(torch.tensor([], dtype=torch.long, device=self.device))
-
+        
 
     def update_target_wp(self, reset_env_ids):
         # self.target_wp_i specifies which seq to use for each env, and self.target_wp_j specifies the timestep in the seq
@@ -158,6 +162,107 @@ class H1TaskReach(LeggedRobot):
             self.target_wp_j[reset_env_ids] = 0
             resample_i[reset_env_ids] = True
         self.target_wp_i = torch.where(resample_i, torch.randint(0, self.num_pairs, (self.num_envs,), device=self.device), self.target_wp_i)
+
+    def update_target_wp_from_csv(self, reset_env_ids, filename="/home/xinyuan/wp_h1.csv", loop=True):
+        """
+        Load a local CSV itinerary of waypoints (one row per timestep). Each row may
+        contain 14 columns: left 7 (x,y,z,qx,qy,qz,qw) followed by right 7. If the
+        file has 7 columns it's interpreted as a single-hand pose and duplicated for
+        both hands. The CSV is loaded lazily on first call and stored on device.
+
+        Behavior mirrors `update_target_wp_incremental` timing: the per-env index
+        `self.target_wp_csv_j` is advanced according to `self.target_wp_update_steps_int`.
+        If `loop` is True the sequence wraps around; otherwise it clamps to the last
+        waypoint.
+        """
+        # lazy-load CSV into tensor [num_wp, 2, 7]
+        if self.target_wp_csv is None:
+            # try loading raw floats first; if file has a header (as produced by
+            # pandas.to_csv with index=False) fallback to genfromtxt skipping header
+            try:
+                data = np.loadtxt(filename, delimiter=',')
+            except Exception as e_loadtxt:
+                try:
+                    data = np.genfromtxt(filename, delimiter=',', skip_header=1)
+                except Exception as e_gen:
+                    raise RuntimeError(f"Failed loading waypoint CSV '{filename}': {e_loadtxt}; {e_gen}")
+
+            if data.ndim == 1:
+                data = data[None, :]
+
+            if data.shape[1] == 14:
+                left = data[:, :7]
+                right = data[:, 7:14]
+            elif data.shape[1] == 7:
+                left = data[:, :7]
+                right = data[:, :7]
+            else:
+                raise RuntimeError(f"Unexpected CSV shape {data.shape}, expected 7 or 14 columns per row")
+
+            wp = np.stack([left, right], axis=1)  # (num_wp, 2, 7)
+            wp_t = torch.tensor(wp.astype(np.float32), device=self.device)
+            self.target_wp_csv = wp_t
+            self.num_wp_csv = int(self.target_wp_csv.shape[0])
+            if self.num_wp_csv <= 0:
+                raise RuntimeError(f"No waypoints loaded from {filename}")
+
+            # compute per-env position offset to align CSV first waypoint to robot current wrist position
+            csv_first_rel = self.target_wp_csv[0]  # [2, 7], first waypoint (relative)
+            csv_first_exp = csv_first_rel.unsqueeze(0).expand(self.num_envs, -1, -1)  # [N, 2, 7]
+            # get current wrist positions (prefer real-time if available, else ori_wrist_pos)
+            try:
+                current_wrist_xyz = self.rigid_state[:, self.wrist_indices, :3].clone()  # [N, 2, 3]
+            except Exception:
+                current_wrist_xyz = self.ori_wrist_pos[:, :, :3].clone()
+            # absolute position of first CSV waypoint before offset
+            first_csv_abs_xyz = self.ori_wrist_pos[:, :, :3] + csv_first_exp[:, :, :3]  # [N, 2, 3]
+            # compute shift so that first_csv_abs + shift = current_wrist
+            shift_xyz = current_wrist_xyz - first_csv_abs_xyz  # [N, 2, 3]
+            # build full offset tensor (only xyz, quat remains zero)
+            offset = torch.zeros((self.num_envs, 2, 7), device=self.device, dtype=torch.float32)
+            offset[:, :, :3] = shift_xyz
+            self.target_wp_csv_offset = offset
+            print(f"[CSV offset] first env left/right xyz shift: {self.target_wp_csv_offset[0, :, :3].cpu().numpy()}")
+
+        # set ref wrist pos using per-env csv index
+        # self.target_wp_csv_j is a long tensor [num_envs]
+        # index into first dim with per-env indices
+        # result: [num_envs, 2, 7]
+        offset = getattr(self, 'target_wp_csv_offset', torch.zeros((self.num_envs, 2, 7), device=self.device))
+        self.ref_wrist_pos = self.target_wp_csv[self.target_wp_csv_j] # + self.ori_wrist_pos + offset
+
+        # print the hand pose command being sent to the robot (show up to first 3 envs)
+        try:
+            num_print = min(3, int(self.num_envs))
+            cmds = self.ref_wrist_pos[:num_print].detach().cpu().numpy()
+            print(f"[step {int(self.common_step_counter)}] csv ref_wrist_pos (first {num_print}): {cmds}")
+        except Exception:
+            pass
+
+        # delayed obs follows same pattern
+        delayed_idx = torch.maximum(self.target_wp_csv_j - self.delayed_obs_target_wp_steps_int, torch.tensor(0, device=self.device))
+        delayed_idx = delayed_idx.long()
+        delayed_offset = self.target_wp_csv[delayed_idx] + offset
+        self.delayed_obs_target_wp = delayed_offset
+
+        # advance per-env csv counter using same timing as other updaters
+        if self.common_step_counter % self.target_wp_update_steps_int == 0:
+            self.target_wp_csv_j += 1
+            if loop:
+                # wrap-around
+                self.target_wp_csv_j = self.target_wp_csv_j.remainder(self.num_wp_csv)
+            else:
+                # clamp to last index
+                self.target_wp_csv_j = torch.clamp(self.target_wp_csv_j, max=max(0, self.num_wp_csv - 1))
+
+            # refresh stochastic intervals
+            self.target_wp_update_steps_int = sample_int_from_float(self.target_wp_update_steps)
+            self.delayed_obs_target_wp_steps_int = sample_int_from_float(self.delayed_obs_target_wp_steps)
+
+        # env reset handling
+        if self.cfg.human.resample_on_env_reset:
+            self.target_wp_csv_j[reset_env_ids] = 0
+
 
     def create_sim(self):
         """ Creates simulation, terrain and evironments
@@ -236,6 +341,7 @@ class H1TaskReach(LeggedRobot):
         env_ids = self.reset_buf.nonzero(as_tuple=False).flatten()
         self.reset_idx(env_ids)
         self.update_target_wp(env_ids) # NOTE: this line matters
+        self.update_target_wp_from_csv(env_ids)
         self.compute_observations() # in some cases a simulation step might be required to refresh some obs (for example body positions)
 
         self.last_last_actions[:] = torch.clone(self.last_actions[:])
