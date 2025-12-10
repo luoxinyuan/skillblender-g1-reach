@@ -223,6 +223,12 @@ class G1WalkingCfg(LeggedRobotCfg):
             dof_vel = -5e-4
             dof_acc = -1e-7
             collision = -1.
+            
+            # # mjlab rewards
+            # feet_swing_height = -1.0  # penalize deviation from target swing height at landing
+            # soft_landing = -0.0001  # penalize high impact forces at landing
+            # body_angular_velocity = -0.05  # penalize excessive body angular velocity
+            # variable_posture = 0.3  # reward for maintaining pose with speed-dependent constraints
 
 
 class G1WalkingCfgPPO(LeggedRobotCfgPPO):

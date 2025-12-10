@@ -643,3 +643,128 @@ class G1Walking(LeggedRobot):
         # target_jt_error = torch.mean(torch.abs(self.dof_pos - self.target_jt), dim=1)
         # return torch.exp(-4 * target_jt_error), target_jt_error
         return 0
+    
+    # ==== Rewards from mjlab ==== #
+    
+    def _reward_feet_swing_height(self):
+        """
+        Penalize deviation from target swing height, evaluated at landing.
+        Tracks peak height during swing phase and evaluates error when foot lands.
+        """
+        # Initialize peak heights if not exists
+        if not hasattr(self, 'peak_heights'):
+            self.peak_heights = torch.zeros((self.num_envs, 2), device=self.device, dtype=torch.float32)
+        
+        contact = self.contact_forces[:, self.feet_indices, 2] > 5.
+        foot_heights = self.rigid_state[:, self.feet_indices, 2] - 0.05
+        
+        # Track peak height during swing (when not in contact)
+        in_air = ~contact
+        self.peak_heights = torch.where(
+            in_air,
+            torch.maximum(self.peak_heights, foot_heights),
+            self.peak_heights,
+        )
+        
+        # Detect first contact (landing)
+        if not hasattr(self, 'last_contact_state'):
+            self.last_contact_state = torch.zeros_like(contact)
+        first_contact = contact & ~self.last_contact_state
+        self.last_contact_state = contact.clone()
+        
+        # Calculate error at landing
+        target_height = self.cfg.rewards.target_feet_height
+        error = self.peak_heights / target_height - 1.0
+        cost = torch.sum(torch.square(error) * first_contact.float(), dim=1)
+        
+        # Scale by command magnitude
+        linear_norm = torch.norm(self.commands[:, :2], dim=1)
+        angular_norm = torch.abs(self.commands[:, 2])
+        total_command = linear_norm + angular_norm
+        active = (total_command > 0.1).float()
+        
+        # Reset peak heights after landing
+        self.peak_heights = torch.where(
+            first_contact,
+            torch.zeros_like(self.peak_heights),
+            self.peak_heights,
+        )
+        
+        return cost * active
+    
+    def _reward_soft_landing(self):
+        """
+        Penalize high impact forces at landing to encourage soft footfalls.
+        Measures force magnitude at first contact moment.
+        """
+        contact = self.contact_forces[:, self.feet_indices, 2] > 5.
+        
+        # Detect first contact (landing)
+        if not hasattr(self, 'last_contact_landing'):
+            self.last_contact_landing = torch.zeros_like(contact)
+        first_contact = contact & ~self.last_contact_landing
+        self.last_contact_landing = contact.clone()
+        
+        # Calculate landing impact force
+        forces = self.contact_forces[:, self.feet_indices, :]  # [B, N, 3]
+        force_magnitude = torch.norm(forces, dim=-1)  # [B, N]
+        landing_impact = force_magnitude * first_contact.float()  # [B, N]
+        cost = torch.sum(landing_impact, dim=1)  # [B]
+        
+        # Scale by command magnitude
+        linear_norm = torch.norm(self.commands[:, :2], dim=1)
+        angular_norm = torch.abs(self.commands[:, 2])
+        total_command = linear_norm + angular_norm
+        active = (total_command > 0.05).float()
+        
+        return cost * active
+    
+    def _reward_body_angular_velocity(self):
+        """
+        Penalize excessive body angular velocities (excluding z-axis).
+        Encourages stable torso rotation.
+        """
+        # Use base angular velocity as proxy for body angular velocity
+        ang_vel_xy = self.base_ang_vel[:, :2]
+        return torch.sum(torch.square(ang_vel_xy), dim=1)
+    
+    def _reward_variable_posture(self):
+        """
+        Penalize deviation from default pose, with tighter constraints when standing still
+        and looser constraints when moving faster (walking/running).
+        """
+        # Calculate speed
+        linear_speed = torch.norm(self.commands[:, :2], dim=1)
+        angular_speed = torch.abs(self.commands[:, 2])
+        total_speed = linear_speed + angular_speed
+        
+        # Define speed thresholds
+        walking_threshold = 0.5
+        running_threshold = 1.5
+        
+        # Create masks for different gaits
+        standing_mask = (total_speed < walking_threshold).float()
+        walking_mask = ((total_speed >= walking_threshold) & (total_speed < running_threshold)).float()
+        running_mask = (total_speed >= running_threshold).float()
+        
+        # Different std for different gaits (tighter when standing, looser when running)
+        # For standing: very tight constraints (std=0.1)
+        # For walking: moderate constraints (std=0.3)
+        # For running: loose constraints (std=0.5)
+        std_standing = 0.1
+        std_walking = 0.3
+        std_running = 0.5
+        
+        std = (
+            std_standing * standing_mask
+            + std_walking * walking_mask
+            + std_running * running_mask
+        )
+        
+        # Calculate joint position error
+        current_joint_pos = self.dof_pos
+        desired_joint_pos = self.default_joint_pd_target
+        error_squared = torch.square(current_joint_pos - desired_joint_pos)
+        
+        # Return exponential reward
+        return torch.exp(-torch.mean(error_squared / (std**2), dim=1))
