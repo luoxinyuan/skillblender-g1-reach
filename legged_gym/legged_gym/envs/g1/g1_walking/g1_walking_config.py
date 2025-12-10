@@ -192,43 +192,45 @@ class G1WalkingCfg(LeggedRobotCfg):
 
         class scales:
             # reference motion tracking
-            joint_pos = 1.6
+            # joint_pos = 1.6
             feet_clearance = 1. * 2
-            feet_contact_number = 1.2 * 2
+            # feet_contact_number = 1.2 * 2
             # gait
             feet_air_time = 1.
             foot_slip = -0.05
-            feet_distance = 0.2
-            knee_distance = 0.2
+            # feet_distance = 0.2
+            # knee_distance = 0.2
             # elbow_distance = 0.4
             # elbow_torso_distance = 0.4
             # contact
-            feet_contact_forces = -0.01
+            # feet_contact_forces = -0.01
             # vel tracking
             tracking_lin_vel = 1.2 * 2
             tracking_ang_vel = 1.1 * 2
-            vel_mismatch_exp = 0.5  # lin_z; ang x,y
-            low_speed = 0.2
-            track_vel_hard = 0.5 * 2
+            # vel_mismatch_exp = 0.5  # lin_z; ang x,y
+            # low_speed = 0.2
+            # track_vel_hard = 0.5 * 2
             # stand_still = -0.5
             # base pos
-            default_joint_pos = 0.5
-            upper_body_pos = 0.5 * 4
+            # default_joint_pos = 0.5
+            # upper_body_pos = 0.5 * 4
             orientation = 1.
-            base_height = 0.2
-            base_acc = 0.2
+            # base_height = 0.2
+            # base_acc = 0.2
             # energy
-            action_smoothness = -0.002
-            torques = -1e-5
-            dof_vel = -5e-4
-            dof_acc = -1e-7
-            collision = -1.
-            
-            # # mjlab rewards
-            # feet_swing_height = -1.0  # penalize deviation from target swing height at landing
-            # soft_landing = -0.0001  # penalize high impact forces at landing
-            # body_angular_velocity = -0.05  # penalize excessive body angular velocity
-            # variable_posture = 0.3  # reward for maintaining pose with speed-dependent constraints
+            # action_smoothness = -0.002
+            # torques = -1e-5
+            # dof_vel = -5e-4
+            # dof_acc = -1e-7
+            # collision = -1.
+
+            # mjlab rewards
+            variable_posture = 1.0
+            body_angular_velocity = 0.0
+            feet_swing_height = -0.25
+            soft_landing = -1e-5
+            dof_pos_limits = -1.0
+            action_rate = -0.1
 
 
 class G1WalkingCfgPPO(LeggedRobotCfgPPO):

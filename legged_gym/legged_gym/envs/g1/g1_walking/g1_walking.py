@@ -760,6 +760,7 @@ class G1Walking(LeggedRobot):
             + std_walking * walking_mask
             + std_running * running_mask
         )
+        std = torch.clamp(std, min=1e-3).unsqueeze(1)
         
         # Calculate joint position error
         current_joint_pos = self.dof_pos

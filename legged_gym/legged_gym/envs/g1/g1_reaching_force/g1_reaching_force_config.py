@@ -177,19 +177,19 @@ class G1ReachingForceCfg(LeggedRobotCfg):
             r_wrist_pos_y = [-0.15, 0.05]
             r_wrist_pos_z = [-0.15, 0.15] # [-0.15, 0.15]
             
-            l_wrist_ori_roll = [-0.5, 0.5]
-            l_wrist_ori_pitch = [-0.7, 0.7]
-            l_wrist_ori_yaw = [-1.0, 1.0]
-            r_wrist_ori_roll = [-0.5, 0.5]
-            r_wrist_ori_pitch = [-0.7, 0.7]
-            r_wrist_ori_yaw = [-1.0, 1.0]
+            l_wrist_ori_roll = [-0.3, 0.3]
+            l_wrist_ori_pitch = [-0.3, 0.3]
+            l_wrist_ori_yaw = [-0.4, 0.4]
+            r_wrist_ori_roll = [-0.3, 0.3]
+            r_wrist_ori_pitch = [-0.3, 0.3]
+            r_wrist_ori_yaw = [-0.4, 0.4]
 
     # External force configuration
     class force:
         # Force ranges for X, Y, Z axes (in Newtons, in world frame)
-        apply_force_x_range = [-30.0, 30.0]
-        apply_force_y_range = [-30.0, 30.0]
-        apply_force_z_range = [-30.0, 30.0]
+        apply_force_x_range = [-10.0, 10.0]
+        apply_force_y_range = [-10.0, 10.0]
+        apply_force_z_range = [-10.0, 10.0]
         
         # Force duration (in simulation steps)
         randomize_force_duration = [100, 150]  # min and max steps
@@ -240,7 +240,7 @@ class G1ReachingForceCfg(LeggedRobotCfg):
         class scales:
             # wrist tracking
             wrist_pos = 5 * 2
-            wrist_ori = 2.5 * 20 # 2.5
+            # wrist_ori = 2.5 * 2 # 2.5
             # stability
             feet_distance = 0.5
             default_joint_pos = 0.5 * 4
